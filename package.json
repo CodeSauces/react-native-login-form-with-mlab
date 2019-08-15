@@ -8,6 +8,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "mongodb": "^3.3.0",
+    "mongodb-stitch-react-native-sdk": "^4.5.0",
     "native-base": "^2.13.4",
     "react": "16.8.6",
     "react-native": "0.60.5"

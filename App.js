@@ -1,17 +1,41 @@
-import React from 'react';
-import {Header, Container, Text, Body, Title, Form, Item, Input, Button } from 'native-base';
+import React from 'react'
+import { Button, StyleSheet, Text, View } from 'react-native';
+import { Stitch, AnonymousCredential, RemoteMongoClient } from 'mongodb-stitch-react-native-sdk';
+import { Container, Body, Header, Title, Form, Item, Input } from 'native-base';
 
 export default class App extends React.Component {
   constructor(props) {
+
     super(props);
     this.state = {
-      isReady: false,
+      currentUserId: undefined,
+      client: undefined
     };
+    this._loadClient = this._loadClient.bind(this);
+    this._onPressLogin = this._onPressLogin.bind(this);
+    this._onPressLogout = this._onPressLogout.bind(this);
   }
 
 
+  componentDidMount() {
+    this._loadClient();
+  }
+
   render() {
-  
+    let loginStatus = "Currently logged out."
+
+    if (this.state.currentUserId) {
+      loginStatus = `Currently logged in as ${this.state.currentUserId}!`
+    }
+
+    loginButton = <Button
+      onPress={this._onPressLogin}
+      title="Login" />
+
+    logoutButton = <Button
+      onPress={this._onPressLogout}
+      title="Logout" />
+
     return (
       <Container>
         <Header>
@@ -19,22 +43,84 @@ export default class App extends React.Component {
             <Title>Login Form</Title>
           </Body>
         </Header>
-        <Container>
-          <Form>
-            <Item>
-              <Input placeholder="User Name"></Input>
-            </Item>
-            <Item>
-              <Input placeholder="Password"></Input>
-            </Item>
+
+        <Form>
           <Item>
-            <Button  style={{alignSelf:"center",marginHorizontal:160}}>
-              <Text>Login</Text>
-            </Button>
+            <Input placeholder="User Name">
+            </Input>
           </Item>
-          </Form>
-        </Container>
+          <Item>
+            <Input placeholder="Password">
+            </Input>
+          </Item>
+          <Item>
+            <View style={styles.container}>
+              <Text> {loginStatus} </Text>
+              {this.state.currentUserId !== undefined ? logoutButton : loginButton}
+            </View>
+          </Item>
+        </Form>
+
+
+
       </Container>
+
     );
   }
+
+  _loadClient() {
+    Stitch.initializeDefaultAppClient('form-login-xgcfp').then(client => {
+      this.setState({ client });
+      if (client.auth.isLoggedIn) {
+        this.setState({ currentUserId: client.auth.user.id })
+      }
+    });
+
+  }
+
+  _onPressLogin() {
+
+    this.state.client.auth.loginWithCredential(new AnonymousCredential()).then(user => {
+      console.log(`Successfully logged in as user ${user.id}`);
+      this.setState({ currentUserId: user.id })
+
+
+      //start
+      const db = this.state.client.getServiceClient(RemoteMongoClient.factory, 'test-cluster').db('db-test');
+
+      db.collection('users').find({}, { password:"pk" }).asArray()
+        .then(docs => {
+          console.log("Found docs", docs)
+          console.log("[MongoDB Stitch] Connected to Stitch")
+        }).catch(err => {
+          console.error(err)
+        });
+      //end
+
+
+
+    }).catch(err => {
+      console.log(`Failed to log in anonymously: ${err}`);
+      this.setState({ currentUserId: undefined })
+    });
+  }
+
+  _onPressLogout() {
+    this.state.client.auth.logout().then(user => {
+      console.log(`Successfully logged out`);
+      this.setState({ currentUserId: undefined })
+    }).catch(err => {
+      console.log(`Failed to log out: ${err}`);
+      this.setState({ currentUserId: undefined })
+    });
+  }
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

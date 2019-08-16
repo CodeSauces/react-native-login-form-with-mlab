@@ -43,7 +43,6 @@ export default class App extends React.Component {
             <Title>Login Form</Title>
           </Body>
         </Header>
-
         <Form>
           <Item>
             <Input placeholder="User Name">
@@ -61,15 +60,13 @@ export default class App extends React.Component {
           </Item>
         </Form>
 
-
-
       </Container>
 
     );
   }
 
   _loadClient() {
-    Stitch.initializeDefaultAppClient('form-login-xgcfp').then(client => {
+    Stitch.initializeDefaultAppClient('form-login-mkocl').then(client => {
       this.setState({ client });
       if (client.auth.isLoggedIn) {
         this.setState({ currentUserId: client.auth.user.id })
@@ -86,17 +83,21 @@ export default class App extends React.Component {
 
 
       //start
-      const db = this.state.client.getServiceClient(RemoteMongoClient.factory, 'test-cluster').db('db-test');
-
-      db.collection('users').find({}, { password:"pk" }).asArray()
-        .then(docs => {
-          console.log("Found docs", docs)
-          console.log("[MongoDB Stitch] Connected to Stitch")
-        }).catch(err => {
-          console.error(err)
-        });
+      const db = this.state.client.getServiceClient(RemoteMongoClient.factory, 'test-cluster').db('db-react-app');
+      this.state.client.auth.loginWithCredential(new AnonymousCredential()).then(user =>
+        db.collection('users').insertOne({ owner_id: this.state.client.auth.user.id, password: "papia" })
+      ).then(() =>
+        db.collection('users').find({ password: "papia" }).asArray()
+      ).then(docs => {
+        console.log("Found docs", docs)
+        if (docs.filter(OBJ => OBJ.password === "papia")) {
+          console.log("Matached Result", docs.filter(OBJ => OBJ.password === "papia"))
+        }
+        console.log("[MongoDB Stitch] Connected to Stitch")
+      }).catch(err => {
+        console.error(err)
+      });
       //end
-
 
 
     }).catch(err => {
